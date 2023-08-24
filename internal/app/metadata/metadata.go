@@ -91,6 +91,7 @@ func (e *Factory) GetMetadataRecord(scanID string, queries []*Query) (*Record, e
 					firstSourceFile.LocalName, result.FirstNode.Name, result.FirstNode.Line, result.FirstNode.Column, methodLines[0],
 					lastSourceFile.LocalName, result.LastNode.Name, result.LastNode.Line, result.LastNode.Column, methodLines[len(methodLines)-1],
 					astQueryID,
+					result.SimID,
 				}
 			}
 			close(similarityCalculationJobs)
@@ -111,6 +112,7 @@ func (e *Factory) GetMetadataRecord(scanID string, queries []*Query) (*Record, e
 						PathID:       job.PathID,
 						SimilarityID: similarityID,
 						Err:          similarityIDErr,
+						OrigSimID:    job.SimilarityID,
 					}
 				}
 			}()
@@ -141,7 +143,7 @@ func (e *Factory) GetMetadataRecord(scanID string, queries []*Query) (*Record, e
 				}
 			}
 			if recordPath == nil {
-				recordPath = &RecordPath{PathID: r.PathID, SimilarityID: r.SimilarityID}
+				recordPath = &RecordPath{PathID: r.PathID, SimilarityID: r.SimilarityID, OriginalSimID: r.OrigSimID}
 				recordResult.Paths = append(recordResult.Paths, recordPath)
 			}
 		}
@@ -203,6 +205,7 @@ func GetQueriesFromReport(reportReader *report.CxXMLResults) []*Query {
 						Line:     lastNode.Line,
 						Column:   lastNode.Column,
 					},
+					SimID: p.SimilarityID,
 				})
 			}
 		}

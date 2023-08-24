@@ -16,8 +16,9 @@ type (
 	}
 
 	RecordPath struct {
-		PathID       string `json:"pathId"`
-		SimilarityID string `json:"similarityId"`
+		PathID        string `json:"pathId"`
+		SimilarityID  string `json:"similarityId"`
+		OriginalSimID string `json:"origSimid"`
 	}
 
 	Query struct {
@@ -33,6 +34,7 @@ type (
 		ResultID  string
 		FirstNode Node
 		LastNode  Node
+		SimID     string
 	}
 
 	Node struct {
@@ -47,10 +49,12 @@ type (
 		Filename1, Name1, Line1, Column1, MethodLine1,
 		Filename2, Name2, Line2, Column2, MethodLine2,
 		QueryID string
+		SimilarityID string
 	}
 
 	SimilarityCalculationResult struct {
 		Err                            error
 		ResultID, PathID, SimilarityID string
+		OrigSimID                      string
 	}
 )
