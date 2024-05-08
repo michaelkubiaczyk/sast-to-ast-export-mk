@@ -14,10 +14,13 @@ type Args struct {
 	Debug                       bool
 	DBConnectionString,
 	ProjectsIds,
+	OutputFolder,
+	InputFolder,
 	TeamName string
 	RunTime          time.Time
 	QueryMappingFile string
 	NestedTeams      bool
+	ProjectNameMap   string
 }
 
 type ReportJob struct {

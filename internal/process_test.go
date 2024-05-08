@@ -1195,8 +1195,9 @@ func TestFetchSelectedData(t *testing.T) {
 		}
 		metadataProvider := mock_app_metadata.NewMockProvider(ctrl)
 
+		projectNameMap := make(map[int]string)
 		result := fetchSelectedData(client, exporter, &args, 3, time.Millisecond, time.Millisecond,
-			metadataProvider, queryProvider, presetProvider)
+			metadataProvider, queryProvider, presetProvider, projectNameMap)
 
 		assert.NoError(t, result)
 	})
@@ -1239,8 +1240,9 @@ func TestFetchSelectedData(t *testing.T) {
 		}
 		metadataProvider := mock_app_metadata.NewMockProvider(ctrl)
 
+		projectNameMap := make(map[int]string)
 		result := fetchSelectedData(client, exporter, &args, 3, time.Millisecond, time.Millisecond,
-			metadataProvider, queryProvider, presetProvider)
+			metadataProvider, queryProvider, presetProvider, projectNameMap)
 
 		assert.NoError(t, result)
 	})
@@ -1290,8 +1292,9 @@ func TestFetchSelectedData(t *testing.T) {
 
 		metadataProvider := mock_app_metadata.NewMockProvider(ctrl)
 
+		projectNameMap := make(map[int]string)
 		result := fetchSelectedData(client, exporter, &args, 3, time.Millisecond, time.Millisecond,
-			metadataProvider, queryProvider, presetProvider)
+			metadataProvider, queryProvider, presetProvider, projectNameMap)
 
 		assert.NoError(t, result)
 	})
@@ -1313,8 +1316,9 @@ func TestFetchSelectedData(t *testing.T) {
 		}
 		metadataProvider := mock_app_metadata.NewMockProvider(ctrl)
 
+		projectNameMap := make(map[int]string)
 		result := fetchSelectedData(client, exporter, &args, 3, time.Millisecond, time.Millisecond,
-			metadataProvider, queryProvider, presetProvider)
+			metadataProvider, queryProvider, presetProvider, projectNameMap)
 
 		assert.EqualError(t, result, "failed fetching roles")
 	})
@@ -1334,8 +1338,9 @@ func TestFetchSelectedData(t *testing.T) {
 		}
 		metadataProvider := mock_app_metadata.NewMockProvider(ctrl)
 
+		projectNameMap := make(map[int]string)
 		result := fetchSelectedData(client, exporter, &args, 3, time.Millisecond, time.Millisecond,
-			metadataProvider, queryProvider, presetProvider)
+			metadataProvider, queryProvider, presetProvider, projectNameMap)
 
 		assert.NoError(t, result)
 	})
@@ -1369,8 +1374,9 @@ func TestFetchSelectedData(t *testing.T) {
 		}
 		metadataProvider := mock_app_metadata.NewMockProvider(ctrl)
 
+		projectNameMap := make(map[int]string)
 		result := fetchSelectedData(client, exporter, &args, 3, time.Millisecond, time.Millisecond,
-			metadataProvider, queryProvider, presetProvider)
+			metadataProvider, queryProvider, presetProvider, projectNameMap)
 
 		assert.EqualError(t, result, "failed fetching LDAP team mappings")
 	})
@@ -1411,8 +1417,9 @@ func TestFetchSelectedData(t *testing.T) {
 		}
 		metadataProvider := mock_app_metadata.NewMockProvider(ctrl)
 
+		projectNameMap := make(map[int]string)
 		result := fetchSelectedData(client, exporter, &args, 3, time.Millisecond, time.Millisecond,
-			metadataProvider, queryProvider, presetProvider)
+			metadataProvider, queryProvider, presetProvider, projectNameMap)
 
 		assert.NoError(t, result)
 	})
@@ -1435,8 +1442,9 @@ func TestFetchSelectedData(t *testing.T) {
 		}
 		metadataProvider := mock_app_metadata.NewMockProvider(ctrl)
 
+		projectNameMap := make(map[int]string)
 		result := fetchSelectedData(client, exporter, &args, 3, time.Millisecond, time.Millisecond,
-			metadataProvider, queryProvider, presetProvider)
+			metadataProvider, queryProvider, presetProvider, projectNameMap)
 
 		assert.EqualError(t, result, "error searching for results")
 	})
@@ -1452,8 +1460,9 @@ func TestFetchSelectedData(t *testing.T) {
 		}
 		metadataProvider := mock_app_metadata.NewMockProvider(ctrl)
 
+		projectNameMap := make(map[int]string)
 		result := fetchSelectedData(client, exporter, &args, 3, time.Millisecond, time.Millisecond,
-			metadataProvider, queryProvider, presetProvider)
+			metadataProvider, queryProvider, presetProvider, projectNameMap)
 
 		assert.NoError(t, result)
 	})
@@ -1469,8 +1478,9 @@ func TestFetchSelectedData(t *testing.T) {
 		}
 		metadataProvider := mock_app_metadata.NewMockProvider(ctrl)
 
+		projectNameMap := make(map[int]string)
 		result := fetchSelectedData(client, exporter, &args, 3, time.Millisecond, time.Millisecond,
-			metadataProvider, queryProvider, presetProvider)
+			metadataProvider, queryProvider, presetProvider, projectNameMap)
 
 		assert.NoError(t, result)
 	})
@@ -1538,7 +1548,8 @@ func TestFetchProjects(t *testing.T) {
 			}).
 			AnyTimes()
 
-		projectsList, errProjects := fetchProjectsData(client, exporter, 10, teamName, projectsIds, false)
+		projectNameMap := make(map[int]string)
+		projectsList, errProjects := fetchProjectsData(client, exporter, 10, teamName, projectsIds, false, projectNameMap)
 
 		assert.NoError(t, errProjects)
 		assert.Equal(t, projects, projectsList)
@@ -1550,7 +1561,8 @@ func TestFetchProjects(t *testing.T) {
 		client.EXPECT().GetProjects(gomock.Any(), teamName, projectsIds, 0, gomock.Any()).
 			Return([]*rest.Project{}, fmt.Errorf("failed fetching project")).Times(1)
 
-		_, err := fetchProjectsData(client, exporter, 10, teamName, projectsIds, false)
+		projectNameMap := make(map[int]string)
+		_, err := fetchProjectsData(client, exporter, 10, teamName, projectsIds, false, projectNameMap)
 
 		assert.EqualError(t, err, "failed getting projects: failed fetching project")
 	})
@@ -1582,7 +1594,8 @@ func TestFetchProjects(t *testing.T) {
 			}).
 			AnyTimes()
 
-		projectsList, errProjects := fetchProjectsData(client, exporter, 10, teamName, projectsIds, false)
+		projectNameMap := make(map[int]string)
+		projectsList, errProjects := fetchProjectsData(client, exporter, 10, teamName, projectsIds, false, projectNameMap)
 
 		assert.NoError(t, errProjects)
 		assert.Equal(t, expectedList, projectsList)
