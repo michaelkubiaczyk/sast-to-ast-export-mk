@@ -67,114 +67,142 @@ type ReportConsumeOutput struct {
 func RunExport(args *Args) error {
 	consumerCount := worker.GetNumCPU()
 
-	log.Debug().
-		Str("url", args.URL).
-		Str("export", fmt.Sprintf("%v", args.Export)).
-		Str("queryMapping", args.QueryMappingFile).
-		Int("projectsActiveSince", args.ProjectsActiveSince).
-		Str("projectId", args.ProjectsIds).
-		Str("projectTeam", args.TeamName).
-		Bool("nestedTeams", args.NestedTeams).
-		Bool("debug", args.Debug).
-		Int("consumers", consumerCount).
-		Msg("starting export")
+	var exportValues export2.Export
+	if args.InputFolder == "" {
 
-	retryHTTPClient := getRetryHTTPClient()
-	// create api client
-	client, err := rest.NewSASTClient(args.URL, retryHTTPClient)
-	if err != nil {
-		return errors.Wrap(err, "could not create REST client")
-	}
+		log.Debug().
+			Str("url", args.URL).
+			Str("export", fmt.Sprintf("%v", args.Export)).
+			Str("queryMapping", args.QueryMappingFile).
+			Int("projectsActiveSince", args.ProjectsActiveSince).
+			Str("projectId", args.ProjectsIds).
+			Str("projectTeam", args.TeamName).
+			Bool("nestedTeams", args.NestedTeams).
+			Bool("debug", args.Debug).
+			Int("consumers", consumerCount).
+			Msg("starting export")
 
-	// authenticate
-	log.Info().Msg("connecting to SAST")
-	if authErr := client.Authenticate(args.Username, args.Password); authErr != nil {
-		return errors.Wrap(authErr, "could not authenticate with SAST API")
-	}
-
-	// validate permissions
-	jwtClaims := jwt.MapClaims{}
-	_, _, jwtErr := new(jwt.Parser).ParseUnverified(client.Token.AccessToken, jwtClaims)
-	if jwtErr != nil {
-		return errors.Wrap(jwtErr, "permissions error - could not parse token")
-	}
-	permissionsValidateErr := validatePermissions(jwtClaims, args.Export)
-	if permissionsValidateErr != nil {
-		panic(fmt.Errorf("permissions error - %s", permissionsValidateErr.Error()))
-	}
-
-	// collect export data
-	log.Info().Msg("collecting data from SAST")
-	exportValues, exportCreateErr := export2.CreateExport(args.ProductName, args.RunTime)
-	if exportCreateErr != nil {
-		return errors.Wrap(exportCreateErr, "could not create export package")
-	}
-
-	if !args.Debug {
-		defer func(exportValues export2.Exporter) {
-			cleanErr := exportValues.Clean()
-			if cleanErr != nil {
-				log.Error().Err(cleanErr).Msg("error cleaning export temporary folder")
+		var ProjectNameMapping map[int]string
+		if args.ProjectNameMap != "" {
+			var err error
+			ProjectNameMapping, err = loadProjectNameMap(args.ProjectNameMap)
+			if err != nil {
+				return errors.Wrapf(err, "could not read project map %v", args.ProjectNameMap)
 			}
-		}(&exportValues)
-	}
-
-	soapClient := soap.NewClient(args.URL, client.Token, retryHTTPClient)
-	sourceRepo := sourcefile.NewRepo(soapClient)
-	methodLineRepo := methodline.NewRepo(soapClient)
-	queriesRepo := queries.NewRepo(soapClient)
-	presetRepo := presetrepo.NewRepo(soapClient)
-	installationRepo := installation.NewRepo(soapClient)
-
-	fetchInstallationErr := fetchInstallationData(client, installationRepo, &exportValues)
-	if fetchInstallationErr != nil {
-		return errors.Wrap(fetchInstallationErr, "could not fetch installation data")
-	}
-
-	astQueryMappingProvider, astQueryMappingProviderErr := querymapping.NewProvider(args.QueryMappingFile, retryHTTPClient)
-	if astQueryMappingProviderErr != nil {
-		return errors.Wrap(astQueryMappingProviderErr, "could not create AST query mapping provider")
-	}
-
-	astQueryProvider, astQueryProviderErr := astquery.NewProvider(queriesRepo, astQueryMappingProvider)
-	if astQueryProviderErr != nil {
-		return errors.Wrap(astQueryProviderErr, "could not create AST query provider")
-	}
-
-	presetProvider := preset.NewProvider(presetRepo)
-
-	similarityIDCalculator, similarityIDCalculatorErr := similarity.NewSimilarityIDCalculator()
-	if similarityIDCalculatorErr != nil {
-		return errors.Wrap(similarityIDCalculatorErr, "could not create similarity id calculator")
-	}
-
-	metadataTempDir, metadataTempDirErr := os.MkdirTemp("", args.ProductName)
-	if metadataTempDirErr != nil {
-		return errors.Wrap(metadataTempDirErr, "could not create metadata temporary folder")
-	}
-	defer func() {
-		metadataTempDirRemoveErr := os.RemoveAll(metadataTempDir)
-		if metadataTempDirRemoveErr != nil {
-			log.Error().Err(metadataTempDirRemoveErr)
 		}
-	}()
 
-	metadataSource := metadata.NewMetadataFactory(astQueryProvider, similarityIDCalculator, sourceRepo, methodLineRepo, metadataTempDir)
+		retryHTTPClient := getRetryHTTPClient()
+		// create api client
+		client, err := rest.NewSASTClient(args.URL, retryHTTPClient)
+		if err != nil {
+			return errors.Wrap(err, "could not create REST client")
+		}
 
-	addErr := addCustomQueryIDs(astQueryProvider, astQueryMappingProvider)
-	if addErr != nil {
-		return errors.Wrap(addErr, "could not add custom query ids to mapping")
-	}
+		// authenticate
+		log.Info().Msg("connecting to SAST")
+		if authErr := client.Authenticate(args.Username, args.Password); authErr != nil {
+			return errors.Wrap(authErr, "could not authenticate with SAST API")
+		}
 
-	addFileErr := addQueryMappingFile(astQueryMappingProvider, &exportValues)
-	if addFileErr != nil {
-		return errors.Wrap(addFileErr, "could not add query mapping file")
-	}
+		// validate permissions
+		jwtClaims := jwt.MapClaims{}
+		_, _, jwtErr := new(jwt.Parser).ParseUnverified(client.Token.AccessToken, jwtClaims)
+		if jwtErr != nil {
+			return errors.Wrap(jwtErr, "permissions error - could not parse token")
+		}
+		permissionsValidateErr := validatePermissions(jwtClaims, args.Export)
+		if permissionsValidateErr != nil {
+			panic(fmt.Errorf("permissions error - %s", permissionsValidateErr.Error()))
+		}
 
-	fetchErr := fetchSelectedData(client, &exportValues, args, scanReportCreateAttempts, scanReportCreateMinSleep,
-		scanReportCreateMaxSleep, metadataSource, astQueryProvider, presetProvider)
-	if fetchErr != nil {
-		return errors.Wrap(fetchErr, "could not fetch selected data")
+		// collect export data
+		log.Info().Msg("collecting data from SAST")
+		var exportCreateErr error
+
+		if args.OutputFolder == "" {
+			fmt.Println("No specified output folder")
+			exportValues, exportCreateErr = export2.CreateExport(args.ProductName, args.RunTime)
+		} else {
+			fmt.Println("Output to ", args.OutputFolder)
+			exportValues, exportCreateErr = export2.CreateExportLocal(args.OutputFolder, args.RunTime)
+		}
+		if exportCreateErr != nil {
+			return errors.Wrap(exportCreateErr, "could not create export package")
+		}
+
+		if !args.Debug && args.OutputFolder == "" {
+			defer func(exportValues export2.Exporter) {
+				cleanErr := exportValues.Clean()
+				if cleanErr != nil {
+					log.Error().Err(cleanErr).Msg("error cleaning export temporary folder")
+				}
+			}(&exportValues)
+		}
+
+		soapClient := soap.NewClient(args.URL, client.Token, retryHTTPClient)
+		sourceRepo := sourcefile.NewRepo(soapClient)
+		methodLineRepo := methodline.NewRepo(soapClient)
+		queriesRepo := queries.NewRepo(soapClient)
+		presetRepo := presetrepo.NewRepo(soapClient)
+		installationRepo := installation.NewRepo(soapClient)
+
+		fetchInstallationErr := fetchInstallationData(client, installationRepo, &exportValues)
+		if fetchInstallationErr != nil {
+			return errors.Wrap(fetchInstallationErr, "could not fetch installation data")
+		}
+
+		astQueryMappingProvider, astQueryMappingProviderErr := querymapping.NewProvider(args.QueryMappingFile, retryHTTPClient)
+		if astQueryMappingProviderErr != nil {
+			return errors.Wrap(astQueryMappingProviderErr, "could not create AST query mapping provider")
+		}
+
+		astQueryProvider, astQueryProviderErr := astquery.NewProvider(queriesRepo, astQueryMappingProvider)
+		if astQueryProviderErr != nil {
+			return errors.Wrap(astQueryProviderErr, "could not create AST query provider")
+		}
+
+		presetProvider := preset.NewProvider(presetRepo)
+
+		similarityIDCalculator, similarityIDCalculatorErr := similarity.NewSimilarityIDCalculator()
+		if similarityIDCalculatorErr != nil {
+			return errors.Wrap(similarityIDCalculatorErr, "could not create similarity id calculator")
+		}
+
+		metadataTempDir, metadataTempDirErr := os.MkdirTemp("", args.ProductName)
+		if metadataTempDirErr != nil {
+			return errors.Wrap(metadataTempDirErr, "could not create metadata temporary folder")
+		}
+		defer func() {
+			metadataTempDirRemoveErr := os.RemoveAll(metadataTempDir)
+			if metadataTempDirRemoveErr != nil {
+				log.Error().Err(metadataTempDirRemoveErr)
+			}
+		}()
+
+		metadataSource := metadata.NewMetadataFactory(astQueryProvider, similarityIDCalculator, sourceRepo, methodLineRepo, metadataTempDir)
+
+		addErr := addCustomQueryIDs(astQueryProvider, astQueryMappingProvider)
+		if addErr != nil {
+			return errors.Wrap(addErr, "could not add custom query ids to mapping")
+		}
+
+		addFileErr := addQueryMappingFile(astQueryMappingProvider, &exportValues)
+		if addFileErr != nil {
+			return errors.Wrap(addFileErr, "could not add query mapping file")
+		}
+
+		fetchErr := fetchSelectedData(client, &exportValues, args, scanReportCreateAttempts, scanReportCreateMinSleep,
+			scanReportCreateMaxSleep, metadataSource, astQueryProvider, presetProvider, ProjectNameMapping)
+		if fetchErr != nil {
+			return errors.Wrap(fetchErr, "could not fetch selected data")
+		}
+	} else {
+		var exportCreateErr error
+		exportValues, exportCreateErr = export2.CreateExportFromLocal(args.InputFolder, args.RunTime)
+
+		if exportCreateErr != nil {
+			return errors.Wrap(exportCreateErr, "could not create export package")
+		}
 	}
 
 	// export data to file
@@ -230,13 +258,14 @@ func validatePermissions(jwtClaims jwt.MapClaims, selectedExportOptions []string
 func fetchSelectedData(client rest.Client, exporter export2.Exporter, args *Args, retryAttempts int,
 	retryMinSleep, retryMaxSleep time.Duration, metadataProvider metadata.Provider,
 	astQueryProvider interfaces.ASTQueryProvider, presetProvider interfaces.PresetProvider,
+	projectNameMap map[int]string,
 ) error {
 	var errProjects error
 	var projects []*rest.Project
 	options := sliceutils.ConvertStringToInterface(args.Export)
 	if sliceutils.Contains(export2.ProjectsOption, options) {
 		projects, errProjects = fetchProjectsData(client, exporter, args.ProjectsActiveSince, args.TeamName, args.ProjectsIds,
-			args.IsDefaultProjectActiveSince)
+			args.IsDefaultProjectActiveSince, projectNameMap)
 		if errProjects != nil {
 			return errProjects
 		}
@@ -345,7 +374,8 @@ func fetchTeamsData(client rest.Client, exporter export2.Exporter, args *Args) e
 }
 
 func fetchProjectsData(client rest.Client, exporter export2.Exporter, resultsProjectActiveSince int,
-	teamName, projectsIds string, isDefaultProjectActiveSince bool) ([]*rest.Project, error) {
+	teamName, projectsIds string, isDefaultProjectActiveSince bool,
+	projectNameMap map[int]string) ([]*rest.Project, error) {
 	log.Info().Msg("collecting projects")
 	projects := []*rest.Project{}
 	projectOffset := 0
@@ -372,6 +402,16 @@ func fetchProjectsData(client rest.Client, exporter export2.Exporter, resultsPro
 		// prepare to fetch next page
 		projectOffset += projectLimit
 	}
+
+	for pid := range projects {
+		if targetName, ok := projectNameMap[projects[pid].ID]; ok {
+			log.Debug().
+				Int("projectId", projects[pid].ID).
+				Msgf("renaming project '%v' to '%v'", projects[pid].Name, targetName)
+			projects[pid].Name = targetName
+		}
+	}
+
 	if err := exporter.AddFileWithDataSource(export2.ProjectsFileName,
 		export2.NewJSONDataSource(projects)); err != nil {
 		return nil, err
@@ -822,4 +862,15 @@ func getDateFrom(resultsProjectActiveSince int, isDefaultProjectActiveSince bool
 		return ""
 	}
 	return GetDateFromDays(resultsProjectActiveSince, time.Now())
+}
+
+func loadProjectNameMap(filename string) (map[int]string, error) {
+	pmap := make(map[int]string)
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return pmap, err
+	}
+
+	err = json.Unmarshal(data, &pmap)
+	return pmap, err
 }

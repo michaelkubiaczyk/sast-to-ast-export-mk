@@ -33,6 +33,14 @@ func GetArgs(cmd *cobra.Command, productName string) internal.Args {
 	if err != nil {
 		panic(err)
 	}
+	args.OutputFolder, err = cmd.Flags().GetString(outputFolderArg)
+	if err != nil {
+		panic(err)
+	}
+	args.InputFolder, err = cmd.Flags().GetString(inputFolderArg)
+	if err != nil {
+		panic(err)
+	}
 	args.ProjectsActiveSince, err = cmd.Flags().GetInt(projectsActiveSinceArg)
 	if err != nil {
 		panic(err)
@@ -56,6 +64,11 @@ func GetArgs(cmd *cobra.Command, productName string) internal.Args {
 	args.IsDefaultProjectActiveSince = args.ProjectsActiveSince == emptyProjectsActiveSince
 	if args.IsDefaultProjectActiveSince {
 		args.ProjectsActiveSince = projectsActiveSinceDefaultValue
+	}
+
+	args.ProjectNameMap, err = cmd.Flags().GetString(projectNameMapArg)
+	if err != nil {
+		args.ProjectNameMap = ""
 	}
 
 	args.OutputPath, err = os.Getwd()
