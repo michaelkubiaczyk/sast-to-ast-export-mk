@@ -60,15 +60,18 @@ func (e *Factory) GetMetadataRecord(scanID string, queries []*Query) (*Record, e
 		}
 		var filesToDownload []interfaces.SourceFile
 		for _, result := range query.Results {
-			if ok1 := findSourceFile(result.FirstNode.FileName, filesToDownload); ok1 == nil {
+			firstFile := filepath.Join(result.ResultID, result.FirstNode.FileName)
+			if ok1 := findSourceFile(firstFile, filesToDownload); ok1 == nil {
 				filesToDownload = append(filesToDownload, interfaces.SourceFile{
-					RemoteName: result.FirstNode.FileName,
+					RemoteName: firstFile,
 					LocalName:  filepath.Join(e.tmpDir, result.ResultID, result.FirstNode.FileName),
 				})
 			}
-			if ok2 := findSourceFile(result.LastNode.FileName, filesToDownload); ok2 == nil {
+
+			lastFile := filepath.Join(result.ResultID, result.LastNode.FileName)
+			if ok2 := findSourceFile(lastFile, filesToDownload); ok2 == nil {
 				filesToDownload = append(filesToDownload, interfaces.SourceFile{
-					RemoteName: result.LastNode.FileName,
+					RemoteName: lastFile,
 					LocalName:  filepath.Join(e.tmpDir, result.ResultID, result.LastNode.FileName),
 				})
 			}
