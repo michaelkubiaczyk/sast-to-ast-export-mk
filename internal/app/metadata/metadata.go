@@ -61,6 +61,8 @@ func (e *Factory) GetMetadataRecord(scanID string, queries []*Query) (*Record, e
 		var filesToDownload []interfaces.SourceFile
 		for _, result := range query.Results {
 			firstFile := filepath.Join(result.ResultID, result.FirstNode.FileName)
+			lastFile := filepath.Join(result.ResultID, result.LastNode.FileName)
+
 			if ok1 := findSourceFile(firstFile, filesToDownload); ok1 == nil {
 				filesToDownload = append(filesToDownload, interfaces.SourceFile{
 					RemoteName: firstFile,
@@ -68,7 +70,6 @@ func (e *Factory) GetMetadataRecord(scanID string, queries []*Query) (*Record, e
 				})
 			}
 
-			lastFile := filepath.Join(result.ResultID, result.LastNode.FileName)
 			if ok2 := findSourceFile(lastFile, filesToDownload); ok2 == nil {
 				filesToDownload = append(filesToDownload, interfaces.SourceFile{
 					RemoteName: lastFile,
@@ -86,8 +87,10 @@ func (e *Factory) GetMetadataRecord(scanID string, queries []*Query) (*Record, e
 		q := query
 		go func() {
 			for _, result := range q.Results {
-				firstSourceFile := findSourceFile(result.FirstNode.FileName, filesToDownload)
-				lastSourceFile := findSourceFile(result.LastNode.FileName, filesToDownload)
+				firstFile := filepath.Join(result.ResultID, result.FirstNode.FileName)
+				lastFile := filepath.Join(result.ResultID, result.LastNode.FileName)
+				firstSourceFile := findSourceFile(firstFile, filesToDownload)
+				lastSourceFile := findSourceFile(lastFile, filesToDownload)
 				methodLines := findResultPath(result.PathID, methodLinesByPath).MethodLines
 				similarityCalculationJobs <- SimilarityCalculationJob{
 					result.ResultID, result.PathID,
