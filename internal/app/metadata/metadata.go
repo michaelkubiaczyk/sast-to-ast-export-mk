@@ -63,13 +63,13 @@ func (e *Factory) GetMetadataRecord(scanID string, queries []*Query) (*Record, e
 			if ok1 := findSourceFile(result.FirstNode.FileName, filesToDownload); ok1 == nil {
 				filesToDownload = append(filesToDownload, interfaces.SourceFile{
 					RemoteName: result.FirstNode.FileName,
-					LocalName:  filepath.Join(e.tmpDir, result.FirstNode.FileName),
+					LocalName:  filepath.Join(e.tmpDir, result.ResultID, result.FirstNode.FileName),
 				})
 			}
 			if ok2 := findSourceFile(result.LastNode.FileName, filesToDownload); ok2 == nil {
 				filesToDownload = append(filesToDownload, interfaces.SourceFile{
 					RemoteName: result.LastNode.FileName,
-					LocalName:  filepath.Join(e.tmpDir, result.LastNode.FileName),
+					LocalName:  filepath.Join(e.tmpDir, result.ResultID, result.LastNode.FileName),
 				})
 			}
 		}
