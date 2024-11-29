@@ -162,14 +162,6 @@ func RunExport(args *Args) error {
 		}
 
 		presetProvider := preset.NewProvider(presetRepo)
-	metadataSource := metadata.NewMetadataFactory(
-		astQueryProvider,
-		similarityIDCalculator,
-		sourceRepo,
-		methodLineRepo,
-		metadataTempDir,
-		args.SimIDVersion,
-	)
 
 		similarityIDCalculator, similarityIDCalculatorErr := similarity.NewSimilarityIDCalculator()
 		if similarityIDCalculatorErr != nil {
@@ -187,7 +179,7 @@ func RunExport(args *Args) error {
 			}
 		}()
 
-		metadataSource := metadata.NewMetadataFactory(astQueryProvider, similarityIDCalculator, sourceRepo, methodLineRepo, metadataTempDir)
+		metadataSource := metadata.NewMetadataFactory(astQueryProvider, similarityIDCalculator, sourceRepo, methodLineRepo, metadataTempDir, args.SimIDVersion)
 
 		addErr := addCustomQueryIDs(astQueryProvider, astQueryMappingProvider)
 		if addErr != nil {
