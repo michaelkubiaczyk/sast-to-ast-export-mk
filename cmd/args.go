@@ -65,16 +65,17 @@ func GetArgs(cmd *cobra.Command, productName string) internal.Args {
 	if args.IsDefaultProjectActiveSince {
 		args.ProjectsActiveSince = projectsActiveSinceDefaultValue
 	}
-
 	args.ProjectNameMap, err = cmd.Flags().GetString(projectNameMapArg)
 	if err != nil {
 		args.ProjectNameMap = ""
 	}
-
 	args.OutputPath, err = os.Getwd()
 	if err != nil {
 		panic(err)
 	}
-
+	args.SimIDVersion, err = cmd.Flags().GetInt(simIDVersionArg)
+	if err != nil {
+		panic(err)
+	}
 	return args
 }

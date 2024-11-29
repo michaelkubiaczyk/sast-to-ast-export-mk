@@ -21,6 +21,7 @@ type Args struct {
 	QueryMappingFile string
 	NestedTeams      bool
 	ProjectNameMap   string
+	SimIDVersion     int
 }
 
 type ReportJob struct {
