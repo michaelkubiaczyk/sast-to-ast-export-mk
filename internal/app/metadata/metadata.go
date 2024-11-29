@@ -1,7 +1,6 @@
 package metadata
 
 import (
-	"fmt"
 	"path/filepath"
 
 	"github.com/checkmarxDev/ast-sast-export/internal/app/interfaces"
@@ -92,12 +91,6 @@ func (e *Factory) GetMetadataRecord(scanID string, queries []*Query) (*Record, e
 			for _, result := range q.Results {
 				firstSourceFile := findSourceFile(result.ResultID, result.FirstNode.FileName, filesToDownload)
 				lastSourceFile := findSourceFile(result.ResultID, result.LastNode.FileName, filesToDownload)
-				if firstSourceFile == nil {
-					fmt.Println("File " + result.FirstNode.FileName + " not found in result " + result.ResultID)
-				}
-				if lastSourceFile == nil {
-					fmt.Println("File " + result.LastNode.FileName + " not found in result " + result.ResultID)
-				}
 				methodLines := findResultPath(result.PathID, methodLinesByPath).MethodLines
 				similarityCalculationJobs <- SimilarityCalculationJob{
 					result.ResultID, result.PathID,
